@@ -1,0 +1,10 @@
+the main task here is to store images 
+how ? to store them 
+we can use a third party to store them 
+
+initially we keep all are assets used such as images and files in a public directory so that when the connection is lost at atleast we don
+have thpse files available to us 
+
+mongo db password : Mathematics18
+
+mongodb+srv://siddhant:<db_password>@cluster0.ycro2.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0
