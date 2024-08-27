@@ -61,7 +61,7 @@ userSchema.pre("save", async function(next) {
     //password field ko leke usko encrypt karke save kardo
     //but first check if we really want to access the password 
     if(!this.isModified("password")) return next();
-    this.password = bcrypt.hash(this.password, 10)
+    this.password = await bcrypt.hash(this.password, 10)
     next()
 })
 
