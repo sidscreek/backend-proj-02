@@ -70,6 +70,9 @@ userSchema.methods.isPasswordCorrect = async function(password){
    return await bcrypt.compare(password,this.password)
 }
 
+//Access tokens are short lived 
+//as long as we have access token , features which require access tokens to access that particular resource 
+//ex : file upload
 userSchema.methods.generateAccessToken = function(){
     return jwt.sign(
         {
@@ -84,6 +87,10 @@ userSchema.methods.generateAccessToken = function(){
         }
     )
 }
+//Refresh tokens are long lived 
+//saved in both database and given to user 
+//after your token expire refresh token will let you access that feature if you hit that particular endpoint , you no need to 
+//login again or enter password again
 userSchema.methods.generateRefreshToken = function(){
     return jwt.sign(
         {

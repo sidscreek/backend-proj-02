@@ -4,6 +4,26 @@ import { User } from "../models/user.model.js";
 import { uploadOnCloudinary } from "../utils/Cloudinary.js"
 import { ApiResponse } from "../utils/ApiResponse.js";
 
+const generateAccessAndRefereshTokens = async(userId) => {
+    try {
+        const user = await User.findById(userId);
+        const accessToken = user.generateRefreshToken();
+        const refreshToken = user.generateAccessToken();
+
+        //add the refresh token to the user
+        user.refreshToken = refreshToken;
+
+        //save the user now without any validation
+        await user.save({validateBeforeSave: true});
+
+        //return both 
+        return { accessToken, refreshToken };
+    } catch (error) {
+        throw new ApiError(500, "Something went wrong while generating tokens");
+        
+    }
+}
+
 const registerUser = asyncHandler( async (req,res) => {
     //register of user 
     //break into small sub problems and write the code 
@@ -37,7 +57,7 @@ const registerUser = asyncHandler( async (req,res) => {
     }
 
     //email matching
-    const existedUser = User.findOne({
+    const existedUser = await User.findOne({
         $or:[{ username }, { email }]
     })
     //if match found throw new error
@@ -99,5 +119,108 @@ const registerUser = asyncHandler( async (req,res) => {
 
 })
  
+//creation of login user 
+const loginUser = asyncHandler(async (req,res) => {
+    //access data from req body
+    //check if username is there 
+    //it depends on u what type of access you want to give to the user, can be either username or email
+    //find the user
+    //password check
+    //access and refresh token generate 
+    //send cookie
 
-export { registerUser };
+    const {email, username, password} = req.body
+
+    if(!username || !email)
+    {
+        throw new ApiError(400, "Username or email is required");   
+    }
+
+    const user = await User.findOne({
+        $or: [{username}, {email}]
+    })
+
+    if(!user)
+    {
+        throw new ApiError(404, "User does not exist");
+    }
+    //check if password is correct 
+
+    const isPasswordValid = await user.isPasswordCorrect(password);
+
+    if(!isPasswordValid){
+        throw new ApiError(401, "Invalid user credentials");
+    }
+
+    const {refreshToken, accessToken } = await generateAccessAndRefereshTokens(user._id);
+    
+    //update the user 
+
+    const loggedUser = await User.findById(user._id).select("-password -refreshToken")
+
+    //send the cookies
+    const options = {
+        //bydefault cookies can be modified at frontend 
+        httpOnly: true,
+        secure: true,
+        //after these 2 parameters now the cookies can be modified at server only
+    }
+
+    return res
+    .status(200)
+    .cookie("accessToken", accessToken, options)
+    .cookie("refreshToken", refreshToken,options)
+    .json(
+        new ApiResponse(
+            200,
+            {
+                user: loggedUser, accessToken, refreshToken
+            },
+            "User logged in Successfully"
+        )
+    )
+})
+
+//creation of loggedout user 
+
+const loggedOutUser = asyncHandler( async(req,res) =>{
+    //think about how the user would log out 
+    //you can either remove the cookies 
+    //or
+    //reset the refresh token 
+    //we need user id 
+    //but how??
+    //here comes the concept of middleware so design your own middleware
+    await User.findByIdAndUpdate(
+        req.user._id,
+        {
+            $set:{
+                refreshToken: undefined
+            }
+        },
+        {
+            new: true
+        }
+    )
+    const options = {
+        //bydefault cookies can be modified at frontend 
+        httpOnly: true,
+        secure: true,
+        //after these 2 parameters now the cookies can be modified at server only
+    }
+
+    return res
+    .status(200)
+    .clearCookie("accessToken",options)
+    .clearCookie("refreshToken", options)
+    .json(new ApiResponse(200, {}, "User logged out successfully"))
+
+
+})
+
+
+export { 
+    registerUser,
+    loginUser,
+    loggedOutUser
+};
