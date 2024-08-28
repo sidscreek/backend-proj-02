@@ -274,10 +274,66 @@ const refreshAccessToken = asyncHandler( async(req,res) => {
  
    } catch (error) {
     
-    throw new ApiError(401, error?.message || "Invalid refresh token");
-
-    
+    throw new ApiError(401, error?.message || "Invalid refresh token");    
    }
+
+})
+
+const changeCurrentPassword = asyncHandler( async(req,res)=> {
+    const { oldPassword, newPassword} = req.body;
+
+    //user can change the password then it must be logged in 
+    //here if loggedin then comes the use of middleware 
+    //through middleware we can access user 
+    //if middleware has been used then user information we have and can access its id 
+    const user = await User.findById(req.user?._id)
+    const isPasswordCorrect = await user.isPasswordCorrect(oldPassword)
+
+    if(!isPasswordCorrect)
+    {
+        throw new ApiError(400, "Invalid Old Password");
+    }
+
+    //set the new password and save it
+    user.password = newPassword
+    await user.save({validateBeforeSave: false});
+
+    return res
+    .status(200)
+    .json(new ApiResponse(200,{},"Password changed successfully"))
+
+
+})
+
+const getCurrentUser = asyncHandler(async (req,res) => {
+    return res
+    .status(200)
+    .json(200, req.user, "current user fetched successfully")
+})
+
+//think about what all features we are giving access to the user 
+const updateAccountDetails = asyncHandler( async(req,res)=> {
+    const { fullname, email} = req.body
+    if(!fullname || !email)
+    {
+        throw new ApiError(400, "All fields are required");
+    }
+
+    const user = User.findByIdAndUpdate(
+        req.user?._id,
+        {
+            //mongo db aggreration pipelines 
+            $set: {
+                fullname,
+                email: email
+            }
+        },
+        {new: true}
+    ).select("-password")
+
+    return res
+    .status(200)
+    .json(new ApiResponse(200, "Account details updated successfully"))
 
 })
 
@@ -286,5 +342,7 @@ export {
     registerUser,
     loginUser,
     logoutUser,
-    refreshAccessToken
+    refreshAccessToken,
+    changeCurrentPassword,
+    getCurrentUser
 };
