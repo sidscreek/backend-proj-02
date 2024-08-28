@@ -312,6 +312,8 @@ const getCurrentUser = asyncHandler(async (req,res) => {
 })
 
 //think about what all features we are giving access to the user 
+
+//updation of text based data 
 const updateAccountDetails = asyncHandler( async(req,res)=> {
     const { fullname, email} = req.body
     if(!fullname || !email)
@@ -337,6 +339,36 @@ const updateAccountDetails = asyncHandler( async(req,res)=> {
 
 })
 
+const updateUserAvatar = asyncHandler( async(req,res) =>{
+    //we need access of files 
+    //here comes multer middleware
+    const avatarLocalPath = req.file?.path
+    
+    if(!avatarLocalPath)
+    {
+        throw new ApiError(404,"Avatar file is missing");
+    }
+
+    //upload this file on cloudinary 
+    const avatar = await uploadOnCloudinary(avatarLocalPath);
+    //if the url is missing 
+
+    if(!avatar.url)
+    {
+        throw new ApiError(404, "Error while uploading avatar");
+    }
+    await User.findByIdAndUpdate(
+        req.user?._id,
+        {
+            //update
+            $set: {
+                avatar: avatar.url
+            }
+        },
+        {new: true}
+    ).select("-password")
+})
+
 
 export { 
     registerUser,
@@ -344,5 +376,7 @@ export {
     logoutUser,
     refreshAccessToken,
     changeCurrentPassword,
-    getCurrentUser
+    getCurrentUser,
+    updateAccountDetails,
+    updateUserAvatar
 };
